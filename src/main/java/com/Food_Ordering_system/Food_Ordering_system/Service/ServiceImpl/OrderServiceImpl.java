@@ -59,7 +59,7 @@ public class OrderServiceImpl implements OrderService {
 
         Order order = new Order(user, items);
         order.setSelectionStrategy(selectionStrategy);
-        selectedRestaurant.
+        selectedRestaurant.getAssignedOrders();
         order.setAssignedResturant(selectedRestaurant);
         orderRepository.saveOrder(userName, order);
 
