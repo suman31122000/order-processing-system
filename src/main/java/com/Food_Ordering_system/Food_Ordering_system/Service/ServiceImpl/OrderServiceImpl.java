@@ -5,45 +5,49 @@ import com.Food_Ordering_system.Food_Ordering_system.Entity.Resturant;
 import com.Food_Ordering_system.Food_Ordering_system.Entity.User;
 import com.Food_Ordering_system.Food_Ordering_system.Exception.InvalidOrderException;
 import com.Food_Ordering_system.Food_Ordering_system.Exception.ResourceNotFound;
+import com.Food_Ordering_system.Food_Ordering_system.Repository.OrderRepository;
+import com.Food_Ordering_system.Food_Ordering_system.Repository.UserRepository;
+import com.Food_Ordering_system.Food_Ordering_system.Repository.RestaurantRepository;
 import com.Food_Ordering_system.Food_Ordering_system.Service.OrderAssignmentService;
 import com.Food_Ordering_system.Food_Ordering_system.Service.OrderService;
-import com.Food_Ordering_system.Food_Ordering_system.Service.ResturantService;
-import com.Food_Ordering_system.Food_Ordering_system.Service.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class OrderServiceImpl implements OrderService {
+    private final OrderRepository orderRepository;
+    private final UserRepository userRepository;
+    private final RestaurantRepository restaurantRepository;
+    private final Map<String, OrderAssignmentService> assignmentServiceMap;
 
-    private final Map<String,Order>orderMap=new HashMap<>();
-    private final Map<String,OrderAssignmentService>assignmentServiceMap;
-    private OrderAssignmentService strategy;
-    private ResturantService resturantService;
-    private UserService userService;
-
-    public OrderServiceImpl(Map<String, OrderAssignmentService> assignmentServiceMap,
-                            ResturantService resturantService,
-                            UserService userService) {
-        this.resturantService = resturantService;
-        this.userService = userService;
-        this.assignmentServiceMap = new LinkedHashMap<>();
-        assignmentServiceMap.forEach((key, value) ->
-                this.assignmentServiceMap.put(key.toLowerCase(), value)
-        );
+    public OrderServiceImpl(OrderRepository orderRepository, UserRepository userRepository,
+                            RestaurantRepository restaurantRepository, Map<String, OrderAssignmentService> assignmentServiceMap) {
+        this.orderRepository = orderRepository;
+        this.userRepository = userRepository;
+        this.restaurantRepository = restaurantRepository;
+        this.assignmentServiceMap = new HashMap<>();
+        if (assignmentServiceMap != null) {
+            assignmentServiceMap.forEach((key, value) ->
+                    this.assignmentServiceMap.put(key.toLowerCase(), value)
+            );
+        }
     }
 
 
     @Override
     public ResponseEntity<String> placeOrder(String userName, Map<String, Integer> items, String selectionStrategy) {
-        List<Resturant> resturants = resturantService.getAllResturant();
-        Map<String, User> allUsers = userService.getAllUsers();
+        List<Resturant> resturants = restaurantRepository.findAll();
+        Map<String, User> allUsers = userRepository.findAll();
 
-        if (allUsers == null || !allUsers.containsKey(userName)) throw new ResourceNotFound("User not found please verify your details");
-        strategy = assignmentServiceMap.getOrDefault(selectionStrategy.toLowerCase(), assignmentServiceMap.get("lowestbillstrategy"));
-        if (strategy == null) throw new InvalidOrderException("verify your strategy and try again");
+        if (!allUsers.containsKey(userName)) throw new ResourceNotFound("User not found, please verify your details");
+
+        OrderAssignmentService strategy = assignmentServiceMap.getOrDefault(selectionStrategy.toLowerCase(), assignmentServiceMap.get("lowestbillstrategy"));
+        if (strategy == null) throw new InvalidOrderException("Verify your strategy and try again");
 
         Resturant selectedRestaurant = strategy.selectRestaurant(resturants, items);
         User user = allUsers.get(userName);
@@ -54,17 +58,16 @@ public class OrderServiceImpl implements OrderService {
         }
 
         Order order = new Order(user, items);
-        orderMap.put(order.getUserName().getUserName(),order);
         order.setSelectionStrategy(selectionStrategy);
         order.setAssignedResturant(selectedRestaurant);
+        orderRepository.saveOrder(userName, order);
 
-        return new ResponseEntity<>("Order assigned to "+selectedRestaurant.getName(), HttpStatus.ACCEPTED);
+        return new ResponseEntity<>("Order assigned to " + selectedRestaurant.getName(), HttpStatus.ACCEPTED);
     }
-
 
     @Override
     public void completeOrder(Long orderId) {
-        Order order = orderMap.get(orderId);
+        Order order = orderRepository.findOrderById(orderId);
         if (order != null) {
             order.markCompleted();
         }
