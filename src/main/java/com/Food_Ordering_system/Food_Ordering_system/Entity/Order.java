@@ -23,8 +23,9 @@ public class Order {
 
     public void markCompleted() {
         this.completed = true;
-        if (assignedResturant != null && assignedResturant.getAssignedOrders() != null) {
+        if (assignedResturant.getAssignedOrders()>0) {
             userName.setOrderStatus("Completed");
+            assignedResturant.completeAssignedOrder();
         }
     }
 }

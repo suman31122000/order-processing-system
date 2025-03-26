@@ -14,8 +14,7 @@ public class Resturant {
     private final int maxNoOfOrders;
     private Map<String, Double> menu;
     private int rating;
-    @JsonIgnore
-    private List<Order> assignedOrders;
+    private int assignedOrders;
 
     public Resturant(String name, int maxNoOfOrders,int rating) {
         this.name = name;
@@ -24,7 +23,7 @@ public class Resturant {
     }
 
     public boolean canAcceptOrder(Map<String, Integer> items) {
-        if (assignedOrders == null || assignedOrders.size() < maxNoOfOrders) {
+        if ( assignedOrders < maxNoOfOrders) {
             return true;
         }
         return false;
@@ -41,8 +40,11 @@ public class Resturant {
         }
         return bill;
     }
-    public List<Order> getAssignedOrders() {
-        if (assignedOrders == null) assignedOrders = new ArrayList<>();
+    public int getAssignedOrders() {
+        assignedOrders++;
         return assignedOrders;
+    }
+    public void completeAssignedOrder(){
+        assignedOrders--;
     }
 }
